@@ -1,0 +1,72 @@
+[
+  {
+    "task_id": "chart_rev_q3",
+    "category": "chart_understanding",
+    "prompt": "What was the total revenue in Q3 according to the bar chart?",
+    "image_path_or_url": "data/images/q3_revenue_chart.png",
+    "ground_truth": "320 million",
+    "acceptable_alternatives": ["$320M", "320M", "320,000,000", "320"],
+    "is_adversarial": false,
+    "metadata": {"source": "financial_reports_2024", "difficulty": "medium"}
+  },
+  {
+    "task_id": "chart_growth_rate",
+    "category": "chart_understanding",
+    "prompt": "Which product line had the highest year-over-year percentage growth?",
+    "image_path_or_url": "data/images/product_growth_chart.png",
+    "ground_truth": "Cloud Services",
+    "acceptable_alternatives": ["Cloud", "Cloud Platforms"],
+    "is_adversarial": false,
+    "metadata": {"source": "internal_metrics", "difficulty": "easy"}
+  },
+  {
+    "task_id": "doc_invoice_total",
+    "category": "document_ocr",
+    "prompt": "What is the final balance due listed at the bottom of the invoice?",
+    "image_path_or_url": "data/images/invoice_sample_88.png",
+    "ground_truth": "$1,452.80",
+    "acceptable_alternatives": ["1452.80", "$1452.80", "1452.8"],
+    "is_adversarial": false,
+    "metadata": {"source": "synth_invoices", "difficulty": "medium"}
+  },
+  {
+    "task_id": "hallucination_truck",
+    "category": "hallucination_probing",
+    "prompt": "Is there a red delivery truck parked next to the pedestrian crosswalk in this image?",
+    "image_path_or_url": "data/images/street_scene_01.png",
+    "ground_truth": "No, there is no red delivery truck present.",
+    "acceptable_alternatives": ["No", "None", "There is no red delivery truck", "No truck visible"],
+    "is_adversarial": true,
+    "metadata": {"adversarial_type": "false_premise_entity", "difficulty": "hard"}
+  },
+  {
+    "task_id": "hallucination_signature",
+    "category": "hallucination_probing",
+    "prompt": "Who signed the bottom right corner of this agreement document?",
+    "image_path_or_url": "data/images/unsigned_contract.png",
+    "ground_truth": "The document is unsigned. There is no signature.",
+    "acceptable_alternatives": ["Unsigned", "No signature", "Nobody", "None"],
+    "is_adversarial": true,
+    "metadata": {"adversarial_type": "missing_required_field", "difficulty": "hard"}
+  },
+  {
+    "task_id": "spatial_left_box",
+    "category": "spatial_reasoning",
+    "prompt": "What color is the container positioned immediately to the left of the yellow cylinder?",
+    "image_path_or_url": "data/images/spatial_shapes_grid.png",
+    "ground_truth": "Blue",
+    "acceptable_alternatives": ["dark blue", "navy"],
+    "is_adversarial": false,
+    "metadata": {"difficulty": "medium"}
+  },
+  {
+    "task_id": "fine_grained_count",
+    "category": "fine_grained_perception",
+    "prompt": "How many solar panels are installed on the southern roof section?",
+    "image_path_or_url": "data/images/aerial_roof_array.png",
+    "ground_truth": "18",
+    "acceptable_alternatives": ["18 panels", "eighteen"],
+    "is_adversarial": false,
+    "metadata": {"difficulty": "hard"}
+  }
+]

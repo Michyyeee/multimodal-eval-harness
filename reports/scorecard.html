@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multimodal Model Evaluation Scorecard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #f8fafc; color: #1e293b; }
+        .card { background: #ffffff; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        h1 { color: #0f172a; margin-top: 0; }
+        h2 { color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        th { background: #f1f5f9; color: #475569; font-weight: 600; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; display: inline-block; }
+        .badge-primary { background: #e0f2fe; color: #0369a1; }
+        .badge-warning { background: #fef3c7; color: #b45309; }
+        .badge-danger { background: #fee2e2; color: #b91c1c; }
+        .callout { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Multimodal Model Evaluation Scorecard</h1>
+        <p>Automated launch verification report with bootstrap 95% confidence intervals and adversarial stress testing.</p>
+        
+        <h2>1. Overall Performance & 95% Confidence Intervals</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Model Name</th>
+                    <th>Accuracy (%)</th>
+                    <th>95% Bootstrap CI</th>
+                    <th>p50 Latency</th>
+                    <th>p95 Latency</th>
+                    <th>Hallucination Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td><strong>Gemini-Flash-Baseline</strong></td>
+                <td><span class="badge badge-primary">85.7%</span></td>
+                <td><code>[57.1% – 100.0%]</code></td>
+                <td>163.2 ms</td>
+                <td>175.4 ms</td>
+                <td><span class="badge badge-warning">0.0%</span></td>
+            </tr>
+            
+            <tr>
+                <td><strong>Gemma-3B-Quantized</strong></td>
+                <td><span class="badge badge-primary">57.1%</span></td>
+                <td><code>[14.3% – 85.7%]</code></td>
+                <td>59.6 ms</td>
+                <td>74.4 ms</td>
+                <td><span class="badge badge-warning">0.0%</span></td>
+            </tr>
+            
+            </tbody>
+        </table>
+
+        <h2>2. Adversarial Stress Testing (Robustness)</h2><table><thead><tr><th>Model Name</th><th>Clean Acc</th><th>Perturbed Acc</th><th>Retention</th><th>Regressions</th><th>Regression Rate</th></tr></thead><tbody>
+                <tr>
+                    <td><strong>Gemini-Flash-Baseline</strong></td>
+                    <td>100.0%</td>
+                    <td>85.7%</td>
+                    <td><strong>85.7%</strong></td>
+                    <td>1</td>
+                    <td><span class="badge badge-danger">14.3%</span></td>
+                </tr>
+                
+                <tr>
+                    <td><strong>Gemma-3B-Quantized</strong></td>
+                    <td>85.7%</td>
+                    <td>57.1%</td>
+                    <td><strong>66.7%</strong></td>
+                    <td>2</td>
+                    <td><span class="badge badge-danger">33.3%</span></td>
+                </tr>
+                </tbody></table>
+    </div>
+</body>
+</html>

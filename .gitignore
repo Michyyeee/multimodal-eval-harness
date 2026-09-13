@@ -1,0 +1,14 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Agent & workspace metadata
+*.metadata.json
+.system_generated/
+
+# Environment and secrets
+.env
+*.key
+*.token
