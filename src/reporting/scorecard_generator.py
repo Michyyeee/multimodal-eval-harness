@@ -23,11 +23,13 @@ class ScorecardGenerator:
 
         # Table 1: Core Performance & Confidence Intervals
         lines.append("## 1. Overall Performance & 95% Confidence Intervals")
-        lines.append("| Model Name | Accuracy (%) | 95% Bootstrap CI | p50 Latency (ms) | p95 Latency (ms) | Hallucination Rate (%) |")
-        lines.append("| :--- | :---: | :---: | :---: | :---: | :---: |")
+        lines.append("| Model Name | Accuracy (%) | 95% Bootstrap CI | p50 Latency (ms) | p95 Latency (ms) | Tokens (In/Out) | Est. Cost ($) | Hallucination Rate (%) |")
+        lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         for s in summaries:
             ci_str = f"[{s.ci_95_accuracy[0]:.1f}% – {s.ci_95_accuracy[1]:.1f}%]"
-            lines.append(f"| **{s.model_name}** | {s.accuracy:.1f}% | {ci_str} | {s.p50_latency_ms:.1f}ms | {s.p95_latency_ms:.1f}ms | {s.hallucination_rate:.1f}% |")
+            tok_str = f"{s.total_input_tokens} / {s.total_output_tokens}"
+            cost_str = f"${s.total_cost_usd:.4f}"
+            lines.append(f"| **{s.model_name}** | {s.accuracy:.1f}% | {ci_str} | {s.p50_latency_ms:.1f}ms | {s.p95_latency_ms:.1f}ms | {tok_str} | {cost_str} | {s.hallucination_rate:.1f}% |")
 
         # Table 2: Robustness & Regression Testing
         if robustness_map:
@@ -78,6 +80,8 @@ class ScorecardGenerator:
                 <td><code>{ci}</code></td>
                 <td>{s.p50_latency_ms:.1f} ms</td>
                 <td>{s.p95_latency_ms:.1f} ms</td>
+                <td>{s.total_input_tokens} / {s.total_output_tokens}</td>
+                <td>${s.total_cost_usd:.4f}</td>
                 <td><span class="badge badge-warning">{s.hallucination_rate:.1f}%</span></td>
             </tr>
             """
@@ -130,6 +134,8 @@ class ScorecardGenerator:
                     <th>95% Bootstrap CI</th>
                     <th>p50 Latency</th>
                     <th>p95 Latency</th>
+                    <th>Tokens (In/Out)</th>
+                    <th>Est. Cost</th>
                     <th>Hallucination Rate</th>
                 </tr>
             </thead>

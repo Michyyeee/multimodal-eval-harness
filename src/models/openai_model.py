@@ -1,44 +1,44 @@
-"""Live Gemini Vision Model client using standard library urllib (Zero dependencies)."""
+"""Live OpenAI Vision Model client using standard library urllib (Zero dependencies)."""
 
-import base64
 import json
-import mimetypes
 import os
 import time
 import urllib.error
 import urllib.request
-from typing import Optional, Tuple
+from typing import Optional
 
 from src.models.base import BaseVisionModel
 from src.models.utils import calculate_token_cost, load_image_base64
 from src.schemas import EvalTask, ModelPrediction
 
 
-class GeminiVisionModel(BaseVisionModel):
-    """Integrates with Google's Gemini API (v1beta) for live multimodal inference."""
+class OpenAIVisionModel(BaseVisionModel):
+    """Integrates with OpenAI's Chat Completions API for multimodal VLM inference (e.g. GPT-4o)."""
 
     def __init__(
         self,
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = "gpt-4o",
         api_key: Optional[str] = None,
+        api_base: str = "https://api.openai.com/v1",
         temperature: float = 0.1,
         max_output_tokens: int = 1024,
     ):
         super().__init__(model_name=model_name)
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self.api_base = api_base.rstrip("/")
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
-        self.endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent"
+        self.endpoint = f"{self.api_base}/chat/completions"
 
     def predict(self, task: EvalTask) -> ModelPrediction:
-        """Executes a multimodal request against the Gemini API."""
+        """Executes a multimodal request against the OpenAI API."""
         if not self.api_key:
             return ModelPrediction(
                 task_id=task.task_id,
                 model_name=self.model_name,
-                raw_response="[ERROR: Missing GEMINI_API_KEY]",
+                raw_response="[ERROR: Missing OPENAI_API_KEY]",
                 latency_ms=0.0,
-                error="GEMINI_API_KEY is not set. Export it in your environment: export GEMINI_API_KEY='your-key'",
+                error="OPENAI_API_KEY is not set. Export it in your environment: export OPENAI_API_KEY='sk-...'",
             )
 
         # 1. Load image
@@ -52,46 +52,47 @@ class GeminiVisionModel(BaseVisionModel):
                 error=img_err,
             )
 
-        # 2. Build payload
-        parts = [{"text": task.prompt}]
+        # 2. Build multimodal user content
+        content_parts = [{"type": "text", "text": task.prompt}]
         if b64_image:
-            parts.append({
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": b64_image,
-                }
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{mime_type};base64,{b64_image}",
+                    "detail": "auto",
+                },
             })
 
         payload = {
-            "contents": [{"parts": parts}],
-            "generationConfig": {
-                "temperature": self.temperature,
-                "maxOutputTokens": self.max_output_tokens,
-            },
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": content_parts}],
+            "temperature": self.temperature,
+            "max_tokens": self.max_output_tokens,
         }
 
-        url = f"{self.endpoint}?key={self.api_key}"
         data_bytes = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+            "User-Agent": "MultimodalEvalHarness/1.0",
+        }
+        req = urllib.request.Request(self.endpoint, data=data_bytes, headers=headers, method="POST")
 
         start_time = time.perf_counter()
         try:
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=45) as response:
                 elapsed_ms = (time.perf_counter() - start_time) * 1000.0
                 resp_json = json.loads(response.read().decode("utf-8"))
 
-            # Extract generated text
-            candidates = resp_json.get("candidates", [])
-            if candidates and "content" in candidates[0]:
-                content_parts = candidates[0]["content"].get("parts", [])
-                text_response = "".join(part.get("text", "") for part in content_parts)
+            choices = resp_json.get("choices", [])
+            if choices and "message" in choices[0]:
+                text_response = choices[0]["message"].get("content", "")
             else:
                 text_response = "[EMPTY_RESPONSE]"
 
-            usage = resp_json.get("usageMetadata", {})
-            input_tokens = usage.get("promptTokenCount")
-            output_tokens = usage.get("candidatesTokenCount")
+            usage = resp_json.get("usage", {})
+            input_tokens = usage.get("prompt_tokens")
+            output_tokens = usage.get("completion_tokens")
             cost_usd = calculate_token_cost(self.model_name, input_tokens, output_tokens)
 
             return ModelPrediction(
@@ -112,7 +113,7 @@ class GeminiVisionModel(BaseVisionModel):
                 model_name=self.model_name,
                 raw_response=f"[HTTP Error {e.code}]",
                 latency_ms=round(elapsed_ms, 2),
-                error=f"HTTP {e.code}: {error_body[:200]}",
+                error=f"HTTP {e.code}: {error_body[:250]}",
             )
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -125,30 +126,28 @@ class GeminiVisionModel(BaseVisionModel):
             )
 
     def generate(self, prompt: str) -> str:
-        """Text-only prompt generation for acting as an LLM Judge."""
+        """Text-only generation for acting as an LLM Judge."""
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is not configured.")
+            raise ValueError("OPENAI_API_KEY is not configured.")
 
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.0,
-                "maxOutputTokens": self.max_output_tokens,
-            },
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0,
+            "max_tokens": self.max_output_tokens,
         }
 
-        url = f"{self.endpoint}?key={self.api_key}"
         data_bytes = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        req = urllib.request.Request(self.endpoint, data=data_bytes, headers=headers, method="POST")
 
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=45) as response:
             resp_json = json.loads(response.read().decode("utf-8"))
 
-        candidates = resp_json.get("candidates", [])
-        if candidates and "content" in candidates[0]:
-            content_parts = candidates[0]["content"].get("parts", [])
-            return "".join(part.get("text", "") for part in content_parts).strip()
-
+        choices = resp_json.get("choices", [])
+        if choices and "message" in choices[0]:
+            return choices[0]["message"].get("content", "").strip()
         return ""
-

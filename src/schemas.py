@@ -53,6 +53,8 @@ class ModelPrediction:
     latency_ms: float
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
+    is_cached: bool = False
     error: Optional[str] = None
 
 
@@ -102,6 +104,9 @@ class BenchmarkSummary:
     ci_95_accuracy: Tuple[float, float] = (0.0, 0.0)  # Bootstrap 95% Confidence Interval (lower, upper)
     p50_latency_ms: float = 0.0
     p95_latency_ms: float = 0.0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_cost_usd: float = 0.0
     category_breakdown: Dict[str, float] = field(default_factory=dict)
     hallucination_rate: float = 0.0
     robustness: Optional[RobustnessMetrics] = None

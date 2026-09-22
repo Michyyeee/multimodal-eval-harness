@@ -9,10 +9,18 @@ from src.schemas import EvalTask, ModelPrediction, TaskCategory
 class MockVisionModel(BaseVisionModel):
     """Simulates a VLM (e.g. Gemini-Flash or Gemma-VLM) with configurable accuracy & latency profiles."""
 
-    def __init__(self, model_name: str = "mock-gemini-flash", accuracy_rate: float = 0.85, base_latency_ms: float = 120.0):
+    def __init__(
+        self,
+        model_name: str = "mock-gemini-flash",
+        accuracy_rate: float = 0.85,
+        base_latency_ms: float = 120.0,
+        simulate_adversarial: bool = False,
+        **kwargs: any,
+    ):
         super().__init__(model_name=model_name)
-        self.accuracy_rate = accuracy_rate
+        self.accuracy_rate = 0.45 if simulate_adversarial else accuracy_rate
         self.base_latency_ms = base_latency_ms
+        self.simulate_adversarial = simulate_adversarial
 
     def predict(self, task: EvalTask) -> ModelPrediction:
         start_time = time.perf_counter()
