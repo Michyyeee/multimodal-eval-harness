@@ -28,7 +28,8 @@ multimodal_eval_harness/
 │   │   ├── deterministic.py       # Heuristic, regex, numeric-tolerance, and hallucination logic
 │   │   └── llm_judge.py           # LLM-as-a-Judge: 1-5 rubrics + SxS position-bias mitigation
 │   ├── perturbations/
-│   │   └── engine.py              # Adversarial engine: distracting context, typo noise, regression tracking
+│   │   ├── engine.py              # Adversarial engine: multimodal perturbation orchestrator & regression tracking
+│   │   └── image_corruptions.py   # Pure stdlib CV engine: PNG decoding/encoding, pixel noise, contrast, occlusion
 │   └── reporting/
 │       ├── statistics.py          # Bootstrap 95% Confidence Intervals & McNemar paired significance test
 │       └── scorecard_generator.py # Automated executive Markdown and HTML report generation
@@ -72,9 +73,9 @@ multimodal_eval_harness/
 * **Pointwise Mode**: Grades predictions on a 1–5 scale across **Visual Grounding** (penalizing hallucinations), **Factual Accuracy**, and **Conciseness**.
 * **Pairwise SxS Mode**: Compares two models using **bidirectional order swapping** `(A, B)` and `(B, A)` to detect and flag position bias where presentation order influences the judge's verdict.
 
-### 5. Adversarial Stress-Testing & Regression Tracking
-* Injects real-world **distracting context** and **keyboard typo noise**.
-* Measures **Retention Rate** (performance preserved under noise) and **Regression Rate** (frequency where clean input passed but noise triggered failure).
+### 5. Adversarial Stress-Testing & Perceptual Robustness
+* **Multimodal Corruptions Suite**: Evaluates models under both textual distractors (keyboard typos, irrelevant preambles) and pixel-level image corruptions (**Gaussian pixel noise**, **dynamic contrast shifts / low-light degradation**, and **opaque rectangular occlusion masking**) built with zero external dependencies.
+* **Automated Regression Tracking**: Pairs every clean benchmark task with its corrupted counterpart to compute **Retention Rate** (accuracy preserved under noise) and **Regression Rate** (frequency where clean input passed but visual or textual noise triggered failure).
 
 ### 6. Statistical Rigor (Non-Parametric CIs & Hypothesis Testing)
 * **Bootstrap 95% Confidence Intervals**: Runs 1,000 resamples with replacement to provide empirical uncertainty bounds (`[57.1% – 100.0%]`).

@@ -190,5 +190,71 @@ class TestConcurrentRunner(unittest.TestCase):
             self.assertTrue(pred.is_cached)
 
 
+class TestVisualCorruptions(unittest.TestCase):
+    """Verifies pure standard library image corruptions and PNG codecs."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_png = os.path.join(self.temp_dir, "sample.png")
+        # Create a simple 20x20 test image (RGB)
+        pixels = bytearray([100, 150, 200] * (20 * 20))
+        from src.perturbations.image_corruptions import write_png
+        write_png(self.test_png, 20, 20, 3, pixels)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_png_codec_roundtrip(self):
+        from src.perturbations.image_corruptions import read_png, write_png
+        w, h, c, pixels = read_png(self.test_png)
+        self.assertEqual((w, h, c), (20, 20, 3))
+        self.assertEqual(len(pixels), 20 * 20 * 3)
+
+        out_path = os.path.join(self.temp_dir, "roundtrip.png")
+        write_png(out_path, w, h, c, pixels)
+        w2, h2, c2, px2 = read_png(out_path)
+        self.assertEqual((w2, h2, c2), (20, 20, 3))
+        self.assertEqual(pixels, px2)
+
+    def test_pixel_noise(self):
+        from src.perturbations.image_corruptions import apply_pixel_noise, read_png
+        w, h, c, pixels = read_png(self.test_png)
+        noisy = apply_pixel_noise(pixels, w, h, c, sigma=30, seed=42)
+        self.assertEqual(len(noisy), len(pixels))
+        self.assertNotEqual(noisy, pixels)
+
+    def test_contrast_shift(self):
+        from src.perturbations.image_corruptions import apply_contrast_shift, read_png
+        w, h, c, pixels = read_png(self.test_png)
+        low_contrast = apply_contrast_shift(pixels, w, h, c, factor=0.2)
+        # Value 200 compressed towards 128: 128 + 0.2*(200-128) = 142
+        self.assertEqual(low_contrast[2], 142)
+
+    def test_occlusion(self):
+        from src.perturbations.image_corruptions import apply_occlusion, read_png
+        w, h, c, pixels = read_png(self.test_png)
+        occluded = apply_occlusion(pixels, w, h, c, box_rel=(0.0, 0.0, 0.5, 0.5), fill_color=(0, 0, 0))
+        # Top-left pixel should be black (0, 0, 0)
+        self.assertEqual((occluded[0], occluded[1], occluded[2]), (0, 0, 0))
+        # Bottom-right pixel (19, 19) should remain uncorrupted (100, 150, 200)
+        br_idx = (19 * 20 + 19) * 3
+        self.assertEqual((occluded[br_idx], occluded[br_idx+1], occluded[br_idx+2]), (100, 150, 200))
+
+    def test_engine_creates_visual_perturbation(self):
+        from src.perturbations.engine import PerturbationEngine
+        engine = PerturbationEngine(seed=42)
+        task = EvalTask(
+            task_id="test_vis_task",
+            category=TaskCategory.CHART_UNDERSTANDING,
+            prompt="What is the value?",
+            image_path_or_url=self.test_png,
+            ground_truth="320",
+        )
+        pert_task = engine.create_perturbed_task(task, PerturbationType.IMAGE_OCCLUSION)
+        self.assertTrue(pert_task.is_adversarial)
+        self.assertTrue(os.path.exists(pert_task.image_path_or_url))
+        self.assertIn("image_occlusion", pert_task.image_path_or_url)
+
+
 if __name__ == "__main__":
     unittest.main()

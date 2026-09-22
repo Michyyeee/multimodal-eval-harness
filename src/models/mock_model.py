@@ -30,7 +30,17 @@ class MockVisionModel(BaseVisionModel):
         time.sleep(max(0.01, simulated_delay))
         
         # Determine whether model answers accurately or hallucinates
-        is_correct = random.random() < self.accuracy_rate
+        effective_acc = self.accuracy_rate
+        if task.is_adversarial:
+            from src.schemas import PerturbationType
+            if task.perturbation_type == PerturbationType.IMAGE_OCCLUSION:
+                effective_acc = max(0.20, self.accuracy_rate * 0.45)
+            elif task.perturbation_type in (PerturbationType.IMAGE_PIXEL_NOISE, PerturbationType.IMAGE_CONTRAST_SHIFT):
+                effective_acc = max(0.35, self.accuracy_rate * 0.65)
+            else:
+                effective_acc = max(0.45, self.accuracy_rate * 0.85)
+
+        is_correct = random.random() < effective_acc
         
         if is_correct:
             response_text = task.ground_truth

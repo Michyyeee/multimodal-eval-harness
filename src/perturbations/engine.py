@@ -9,10 +9,14 @@ from typing import List, Tuple
 from src.schemas import EvalTask, PerturbationType, RobustnessMetrics
 
 
+from src.perturbations.image_corruptions import generate_corrupted_image
+
+
 class PerturbationEngine:
     """Generates controlled adversarial perturbations (text distraction, typos, and visual transformations)."""
 
     def __init__(self, seed: int = 42):
+        self.seed = seed
         self.rng = random.Random(seed)
 
     def inject_distracting_context(self, prompt: str) -> str:
@@ -51,32 +55,68 @@ class PerturbationEngine:
         return " ".join(words)
 
     def create_perturbed_task(self, task: EvalTask, perturbation_type: PerturbationType) -> EvalTask:
-        """Creates an adversarial variant of an existing task."""
+        """Creates an adversarial variant of an existing task with text or pixel-level corruptions."""
         perturbed = copy.deepcopy(task)
         perturbed.task_id = f"{task.task_id}__pert_{perturbation_type.value}"
         perturbed.is_adversarial = True
         perturbed.perturbation_type = perturbation_type
 
-        if perturbation_type == PerturbationType.DISTRACTING_CONTEXT:
+        # 1. Pixel-level Visual Corruptions
+        if perturbation_type in (
+            PerturbationType.IMAGE_CONTRAST_SHIFT,
+            PerturbationType.IMAGE_PIXEL_NOISE,
+            PerturbationType.IMAGE_OCCLUSION,
+        ):
+            target_image = task.image_path_or_url
+            if not os.path.isabs(target_image):
+                repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+                cand = os.path.join(repo_root, target_image)
+                if os.path.exists(cand):
+                    target_image = cand
+
+            if os.path.exists(target_image):
+                try:
+                    corrupted_path = generate_corrupted_image(
+                        image_path=target_image,
+                        perturbation_type=perturbation_type,
+                        seed=self.seed,
+                    )
+                    perturbed.image_path_or_url = corrupted_path
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not apply visual corruption {perturbation_type.value} to {target_image}: {e}")
+            perturbed.metadata["visual_perturbation"] = perturbation_type.value
+
+        # 2. Textual Distractions & Typo Noise
+        elif perturbation_type == PerturbationType.DISTRACTING_CONTEXT:
             perturbed.prompt = self.inject_distracting_context(task.prompt)
         elif perturbation_type == PerturbationType.TYPO_NOISE:
             perturbed.prompt = self.inject_typo_noise(task.prompt)
-        elif perturbation_type == PerturbationType.IMAGE_CONTRAST_SHIFT:
-            # Metadata tag indicating visual transformation
-            perturbed.metadata["visual_perturbation"] = "contrast_shift_20pct"
         
         return perturbed
 
-    def generate_stress_test_suite(self, clean_tasks: List[EvalTask]) -> List[Tuple[EvalTask, EvalTask]]:
-        """Pairs every clean task with a perturbed counterpart to measure regression."""
+    def generate_stress_test_suite(
+        self,
+        clean_tasks: List[EvalTask],
+        include_visual_corruptions: bool = True
+    ) -> List[Tuple[EvalTask, EvalTask]]:
+        """Pairs every clean task with a perturbed counterpart to measure regression across text and vision."""
         pairs = []
+        if include_visual_corruptions:
+            cycle_types = [
+                PerturbationType.DISTRACTING_CONTEXT,
+                PerturbationType.IMAGE_PIXEL_NOISE,
+                PerturbationType.TYPO_NOISE,
+                PerturbationType.IMAGE_CONTRAST_SHIFT,
+                PerturbationType.IMAGE_OCCLUSION,
+            ]
+        else:
+            cycle_types = [
+                PerturbationType.DISTRACTING_CONTEXT,
+                PerturbationType.TYPO_NOISE,
+            ]
+
         for i, task in enumerate(clean_tasks):
-            # Alternate perturbation types
-            if i % 2 == 0:
-                p_type = PerturbationType.DISTRACTING_CONTEXT
-            else:
-                p_type = PerturbationType.TYPO_NOISE
-            
+            p_type = cycle_types[i % len(cycle_types)]
             pert_task = self.create_perturbed_task(task, p_type)
             pairs.append((task, pert_task))
         return pairs

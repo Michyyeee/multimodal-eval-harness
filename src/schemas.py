@@ -22,6 +22,7 @@ class PerturbationType(str, Enum):
     PROMPT_PARAPHRASE = "prompt_paraphrase"
     IMAGE_CONTRAST_SHIFT = "image_contrast_shift"
     IMAGE_PIXEL_NOISE = "image_pixel_noise"
+    IMAGE_OCCLUSION = "image_occlusion"
 
 
 @dataclass
